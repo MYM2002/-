@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>豆瓣电影采集系统控制台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-header {
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+        }
+        .progress {
+            height: 20px;
+            border-radius: 10px;
+        }
+        .status-badge {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .btn-action {
+            padding: 10px 25px;
+            font-weight: 600;
+            border-radius: 30px;
+            transition: all 0.3s;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #00b09b, #96c93d);
+            border: none;
+        }
+        .btn-stop {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            border: none;
+        }
+        .btn-start:hover, .btn-stop:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        .stat-label {
+            font-size: 1rem;
+            color: #6c757d;
+        }
+        .movie-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            vertical-align: middle;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .last-updated {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="dashboard">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-film me-3"></i>豆瓣电影采集系统控制台</h1>
+                    <p class="lead">实时监控和管理电影数据采集任务</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="status-badge bg-dark">
+                        <span id="statusText">准备就绪</span>
+                        <span id="statusSpinner" class="spinner ms-2 d-none"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-tasks me-2"></i>任务控制
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="movieLimit" class="form-label">爬取电影数量</label>
+                                <input type="number" class="form-control" id="movieLimit" value="100" min="10" max="500">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="d-grid gap-2">
+                                    <button id="startBtn" class="btn btn-success btn-action btn-start">
+                                        <i class="fas fa-play me-2"></i>开始爬取
+                                    </button>
+                                    <button id="stopBtn" class="btn btn-danger btn-action btn-stop mt-2" disabled>
+                                        <i class="fas fa-stop me-2"></i>停止爬取
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">爬取进度</label>
+                            <div class="progress">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                    role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div class="mt-2 d-flex justify-content-between">
+                                <span id="progressText">0/0</span>
+                                <span id="progressPercent">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-info-circle me-2"></i>系统状态
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="errorCount">0</div>
+                                    <div class="stat-label">错误数量</div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="threadCount">0</div>
+                                    <div class="stat-label">活动线程</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="queueSize">0</div>
+                                    <div class="stat-label">队列大小</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="crawledCount">0</div>
+                                    <div class="stat-label">已爬取电影</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-ticket-alt me-2"></i>当前爬取电影
+                    </div>
+                    <div class="card-body">
+                        <h3 id="currentMovie" class="text-center py-4">无</h3>
+                        <div class="mt-4">
+                            <h5><i class="fas fa-history me-2"></i>任务时间</h5>
+                            <ul class="list-group">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>开始时间:</span>
+                                    <span id="startTime">-</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>结束时间:</span>
+                                    <span id="endTime">-</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>最后更新时间:</span>
+                                    <span id="lastUpdate">-</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="fas fa-database me-2"></i>数据存储
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h5><i class="fas fa-file-csv me-2"></i>CSV文件</h5>
+                            <ul class="list-group">
+                                <li class="list-group-item">movies.csv - 电影基本信息</li>
+                                <li class="list-group-item">short_comments.csv - 电影短评</li>
+                                <li class="list-group-item">reviews.csv - 电影长评</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h5><i class="fas fa-server me-2"></i>MySQL数据库</h5>
+                            <div class="alert alert-info">
+                                数据库: douban_movie_db<br>
+                                表: movies, short_comments, reviews
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-updated mt-4">
+            最后更新: <span id="lastUpdatedTime">-</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const statusText = document.getElementById('statusText');
+            const statusSpinner = document.getElementById('statusSpinner');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const progressPercent = document.getElementById('progressPercent');
+            const currentMovie = document.getElementById('currentMovie');
+            const errorCount = document.getElementById('errorCount');
+            const threadCount = document.getElementById('threadCount');
+            const queueSize = document.getElementById('queueSize');
+            const crawledCount = document.getElementById('crawledCount');
+            const startTime = document.getElementById('startTime');
+            const endTime = document.getElementById('endTime');
+            const lastUpdate = document.getElementById('lastUpdate');
+            const lastUpdatedTime = document.getElementById('lastUpdatedTime');
+            
+            let updateInterval;
+            
+            // 获取系统状态
+            function fetchStatus() {
+                fetch('/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateUI(data);
+                    })
+                    .catch(error => {
+                        console.error('获取状态失败:', error);
+                    });
+            }
+            
+            // 更新UI
+            function updateUI(data) {
+                // 更新状态文本
+                statusText.textContent = data.status_text;
+                
+                // 更新进度
+                const processed = data.processed || 0;
+                const total = data.total || 1;
+                const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+                
+                progressBar.style.width = `${percent}%`;
+                progressText.textContent = `${processed}/${total}`;
+                progressPercent.textContent = `${percent}%`;
+                
+                // 更新状态指示器
+                if (data.is_running) {
+                    statusSpinner.classList.remove('d-none');
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    progressBar.classList.add('progress-bar-animated');
+                } else {
+                    statusSpinner.classList.add('d-none');
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    progressBar.classList.remove('progress-bar-animated');
+                }
+                
+                // 更新统计数据
+                errorCount.textContent = data.error_count || 0;
+                threadCount.textContent = data.active_threads || 0;
+                queueSize.textContent = data.queue_size || 0;
+                crawledCount.textContent = data.crawled_count || 0;
+                currentMovie.textContent = data.current_movie || '无';
+                
+                // 更新时间信息
+                startTime.textContent = data.start_time || '-';
+                endTime.textContent = data.end_time || '-';
+                lastUpdate.textContent = data.last_update || '-';
+                lastUpdatedTime.textContent = new Date().toLocaleTimeString();
+            }
+            
+            // 开始爬取
+            startBtn.addEventListener('click', function() {
+                const movieLimit = document.getElementById('movieLimit').value;
+                
+                fetch('/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ movie_limit: movieLimit })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'started') {
+                        showAlert('爬虫已启动！', 'success');
+                    } else {
+                        showAlert(data.message, 'warning');
+                    }
+                })
+                .catch(error => {
+                    console.error('启动失败:', error);
+                    showAlert('启动爬虫失败，请检查服务器', 'danger');
+                });
+            });
+            
+            // 停止爬取
+            stopBtn.addEventListener('click', function() {
+                fetch('/stop', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'stopping') {
+                        showAlert('正在停止爬虫...', 'info');
+                    } else {
+                        showAlert(data.message, 'warning');
+                    }
+                })
+                .catch(error => {
+                    console.error('停止失败:', error);
+                    showAlert('停止爬虫失败', 'danger');
+                });
+            });
+            
+            // 显示提示信息
+            function showAlert(message, type) {
+                // 移除现有的提示
+                const existingAlert = document.querySelector('.alert-dismissible');
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
+                
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+                alertDiv.style.zIndex = '1050';
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                document.body.appendChild(alertDiv);
+                
+                // 5秒后自动消失
+                setTimeout(() => {
+                    alertDiv.classList.remove('show');
+                    setTimeout(() => alertDiv.remove(), 150);
+                }, 5000);
+            }
+            
+            // 初始化
+            fetchStatus();
+            updateInterval = setInterval(fetchStatus, 2000);
+            
+            // 清理定时器
+            window.addEventListener('beforeunload', function() {
+                clearInterval(updateInterval);
+            });
+        });
+    </script>
+</body>
+</html>

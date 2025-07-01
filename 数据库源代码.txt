@@ -1,0 +1,68 @@
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS douban_movie_db 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+
+USE douban_movie_db;
+
+-- 电影信息表 (movies)
+CREATE TABLE IF NOT EXISTS movies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    movie_id VARCHAR(20) NOT NULL COMMENT '豆瓣电影ID',
+    chinese_name VARCHAR(255) NOT NULL COMMENT '中文名',
+    english_name VARCHAR(255) COMMENT '英文名',
+    poster_url VARCHAR(500) COMMENT '海报URL',
+    summary TEXT COMMENT '剧情简介',
+    directors TEXT COMMENT '导演（多个用逗号分隔）',
+    screenwriters TEXT COMMENT '编剧（多个用逗号分隔）',
+    actors TEXT COMMENT '主演（多个用逗号分隔）',
+    genres TEXT COMMENT '类型（多个用逗号分隔）',
+    countries VARCHAR(255) COMMENT '制片国家',
+    languages VARCHAR(255) COMMENT '语言',
+    release_date VARCHAR(255) COMMENT '上映日期',
+    runtime INT COMMENT '片长（分钟）',
+    imdb_url VARCHAR(255) COMMENT 'IMDB链接',
+    alias TEXT COMMENT '又名（多个用逗号分隔）',
+    douban_rating FLOAT COMMENT '豆瓣评分',
+    rating_count INT COMMENT '评分人数',
+    crawl_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '爬取时间',
+    UNIQUE KEY unique_movie_id (movie_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 短评表 (short_comments)
+CREATE TABLE IF NOT EXISTS short_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    movie_id VARCHAR(20) NOT NULL COMMENT '豆瓣电影ID',
+    user_nickname VARCHAR(100) NOT NULL COMMENT '用户昵称',
+    comment_time VARCHAR(50) COMMENT '评论时间',
+    content TEXT NOT NULL COMMENT '评论内容',
+    useful_count INT DEFAULT 0 COMMENT '有用数',
+    crawl_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '爬取时间',
+    INDEX idx_movie_id (movie_id),
+    INDEX idx_comment_time (comment_time),
+    CONSTRAINT fk_short_comments_movies 
+        FOREIGN KEY (movie_id) 
+        REFERENCES movies(movie_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 影评表 (reviews)
+CREATE TABLE IF NOT EXISTS reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    movie_id VARCHAR(20) NOT NULL COMMENT '豆瓣电影ID',
+    user_nickname VARCHAR(100) NOT NULL COMMENT '用户昵称',
+    review_time VARCHAR(50) COMMENT '评论时间',
+    title VARCHAR(500) NOT NULL COMMENT '评论标题',
+    content TEXT NOT NULL COMMENT '评论内容',
+    useful_count INT DEFAULT 0 COMMENT '有用数',
+    useless_count INT DEFAULT 0 COMMENT '无用数',
+    share_count INT DEFAULT 0 COMMENT '分享数',
+    response_count INT DEFAULT 0 COMMENT '回应数',
+    crawl_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '爬取时间',
+    INDEX idx_movie_id (movie_id),
+    INDEX idx_review_time (review_time),
+    CONSTRAINT fk_reviews_movies 
+        FOREIGN KEY (movie_id) 
+        REFERENCES movies(movie_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
